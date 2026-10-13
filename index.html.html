@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>可爱记账本</title>
+<style>
+  :root {
+    --bg: #FFEAF1;
+    --dot: #FFFFFF;
+    --primary: #FF8FB1;
+    --primary-light: #FFC0D4;
+    --text: #C85A82;
+    --text-dark: #7A4B59;
+    --white: #FFFFFF;
+    --card-bg: #FFD1E3;
+    --green: #4DB88C;
+    --red: #E85A7A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Comic Sans MS", cursive, sans-serif;
+    background-color: var(--bg);
+    background-image: radial-gradient(var(--dot) 15%, transparent 16%);
+    background-size: 25px 25px;
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 90px;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  .page {
+    display: none;
+    animation: fadeIn 0.35s ease-out;
+    padding: 20px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .page.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .header { text-align: center; margin-bottom: 15px; }
+  .header h1 { font-size: 26px; color: var(--primary); text-shadow: 1px 1px 0 #fff; letter-spacing: 2px; }
+  .header p { font-size: 13px; color: var(--text); margin-top: 5px; opacity: 0.8; }
+
+  /* ===== 月份圆形徽章 ===== */
+  .month-badge {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 130px;
+    height: 130px;
+    margin: 20px auto 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FFD1E3 0%, #FFB5CC 100%);
+    border: 5px solid #fff;
+    box-shadow: 0 8px 20px rgba(255,143,177,0.35), inset 0 -6px 0 rgba(255,255,255,0.45);
+    position: relative;
+  }
+  .month-badge .bow {
+    position: absolute;
+    top: -10px;
+    right: -6px;
+    font-size: 30px;
+    transform: rotate(18deg);
+    filter: drop-shadow(0 2px 3px rgba(255,143,177,0.5));
+    z-index: 3;
+  }
+  .month-badge .txt {
+    font-size: 28px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 0 var(--primary), 0 0 10px rgba(255,255,255,0.7);
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 2;
+  }
+  .month-badge::before {
+    content: '';
+    position: absolute;
+    top: 22px; left: 24px;
+    width: 26px; height: 18px;
+    background: rgba(255,255,255,0.65);
+    border-radius: 50%;
+    transform: rotate(-30deg);
+    filter: blur(1.5px);
+  }
+
+  /* ===== 分类标签（放大 + 随机分布） ===== */
+  .tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 18px 20px;
+    padding: 15px 5px 40px;
+  }
+  .tag {
+    background: var(--white);
+    color: var(--primary);
+    font-weight: bold;
+    font-size: 21px;
+    padding: 14px 26px;
+    border-radius: 20px;
+    box-shadow: 0 4px 0 var(--primary-light);
+    border: 2px solid var(--primary-light);
+    cursor: pointer;
+    line-height: 1.15;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: filter 0.15s, box-shadow 0.15s;
+    will-change: transform;
+  }
+  .tag:active { filter: brightness(0.95); box-shadow: 0 2px 0 var(--primary-light); }
+  .tag.add-btn {
+    background: var(--primary-light);
+    color: var(--white);
+    border-color: var(--white);
+    font-size: 26px;
+    padding: 11px 24px;
+  }
+
+  /* ===== 底部导航 ===== */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 4px 15px;
+    box-shadow: 0 -4px 15px rgba(255, 143, 177, 0.15);
+    border-top: 2px dashed var(--primary-light);
+    z-index: 100;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 12px; color: var(--text);
+    cursor: pointer;
+    padding: 7px 10px; border-radius: 15px;
+    transition: all 0.2s;
+    min-width: 68px;
+    white-space: nowrap;
+  }
+  .nav-item.active {
+    background: var(--primary); color: var(--white); font-weight: bold;
+    box-shadow: 0 3px 8px rgba(255, 143, 177, 0.4);
+  }
+  .nav-icon { font-size: 20px; margin-bottom: 3px; line-height: 1; }
+
+  /* ===== 弹窗 ===== */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(122, 75, 89, 0.35);
+    backdrop-filter: blur(3px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: var(--white);
+    width: 88%; max-width: 360px;
+    border-radius: 25px;
+    padding: 25px 22px;
+    border: 4px solid var(--primary-light);
+    box-shadow: 0 10px 30px rgba(255, 143, 177, 0.35);
+    transform: scale(0.85);
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .modal-overlay.show .modal { transform: scale(1); }
+  .modal h3 { text-align: center; color: var(--primary); margin-bottom: 18px; font-size: 20px; }
+  .modal-close {
+    position: absolute; top: 14px; right: 14px;
+    background: var(--bg); border: none;
+    width: 30px; height: 30px; border-radius: 50%;
+    font-size: 15px; color: var(--primary);
+    cursor: pointer; font-weight: bold;
+    font-family: inherit;
+  }
+
+  /* ===== 表单 ===== */
+  .form-group { margin-bottom: 13px; }
+  .form-group label {
+    display: block; font-size: 13px; color: var(--text);
+    margin-bottom: 5px; font-weight: bold;
+  }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 2px solid var(--primary-light);
+    border-radius: 12px;
+    font-size: 15px;
+    color: var(--text-dark);
+    background: var(--bg);
+    outline: none;
+    font-family: inherit;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--primary);
+  }
+  .form-group textarea { resize: none; min-height: 70px; line-height: 1.6; }
+
+  .type-switch { display: flex; gap: 10px; margin-bottom: 16px; }
+  .type-btn {
+    flex: 1; padding: 11px;
+    border-radius: 14px;
+    border: 2px solid var(--primary-light);
+    background: var(--white);
+    color: var(--text);
+    font-size: 15px; font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .type-btn.active {
+    background: var(--primary); color: var(--white);
+    border-color: var(--primary);
+    box-shadow: 0 3px 0 #D6597E;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 13px;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    border-radius: 15px;
+    font-size: 16px; font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #D6597E;
+    transition: all 0.1s;
+    margin-top: 10px;
+    font-family: inherit;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: none; }
+  .btn.danger { background: var(--red); box-shadow: 0 4px 0 #A33858; }
+
+  /* ===== 账单页 ===== */
+  .bill-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .summary-box {
+    border-radius: 18px;
+    padding: 14px;
+    border: 3px solid var(--white);
+    box-shadow: 0 4px 10px rgba(255,143,177,0.18);
+    text-align: center;
+  }
+  .summary-box.income { background: #E5F7EE; }
+  .summary-box.expense { background: var(--card-bg); }
+  .summary-box .s-label { font-size: 12px; color: var(--text-dark); margin-bottom: 6px; font-weight: bold; }
+  .summary-box .s-value { font-size: 19px; font-weight: bold; color: var(--text-dark); word-break: break-all; }
+  .summary-box.income .s-value { color: var(--green); }
+  .summary-box.expense .s-value { color: var(--primary); }
+
+  .prev-balance {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .pb-box {
+    background: var(--white);
+    border-radius: 16px;
+    border: 2px dashed var(--primary-light);
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .pb-box .pb-label { font-size: 11px; color: var(--text); margin-bottom: 4px; }
+  .pb-box .pb-value { font-size: 15px; font-weight: bold; color: var(--text-dark); word-break: break-all; }
+
+  .bills-list { display: flex; flex-direction: column; gap: 13px; }
+  .bill-card {
+    background: var(--card-bg);
+    border-radius: 18px;
+    padding: 15px 20px;
+    border: 3px solid var(--white);
+    box-shadow: 0 4px 10px rgba(255,143,177,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .bill-card:active { transform: scale(0.98); }
+  .bill-card .cat-name { font-size: 17px; font-weight: bold; color: var(--text-dark); }
+  .bill-card .cat-amount { font-size: 17px; font-weight: bold; color: var(--primary); }
+  .bill-card .cat-amount.income { color: var(--green); }
+
+  /* ===== 月份页 ===== */
+  .months-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+  .month-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 14px 12px;
+    border: 3px solid var(--primary-light);
+    text-align: center;
+    box-shadow: 0 5px 0 var(--primary-light);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .month-card:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--primary-light); }
+  .month-card.manual { background: #FFF0F5; border-color: var(--primary); }
+  .month-card .m-title { font-size: 18px; font-weight: bold; color: var(--primary); margin-bottom: 6px; }
+  .month-card .m-total { font-size: 12px; color: var(--text-dark); margin-bottom: 6px; font-weight: bold; line-height: 1.5; }
+  .month-card .m-accounts {
+    font-size: 11px; color: var(--text);
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 5px;
+    line-height: 1.6;
+  }
+  .month-card::before {
+    content: '🎀';
+    position: absolute; top: -10px; left: -6px;
+    font-size: 20px;
+  }
+  .month-card.add-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    border-style: dashed;
+    background: var(--bg);
+    min-height: 120px;
+  }
+  .month-card.add-card::before { content: ''; }
+  .month-card.add-card .add-plus {
+    font-size: 38px; color: var(--primary); font-weight: bold; line-height: 1;
+  }
+  .month-card.add-card .add-text {
+    font-size: 12px; color: var(--text);
+  }
+
+  /* ===== 余额页 ===== */
+  .balance-header-decor {
+    height: 25px;
+    background-image: radial-gradient(circle, var(--primary-light) 40%, transparent 42%);
+    background-size: 30px 30px;
+    background-position: 0 -12px;
+    margin-bottom: 20px;
+  }
+  .balance-row { display: flex; gap: 15px; margin-bottom: 20px; }
+  .balance-box {
+    flex: 1;
+    background: var(--white);
+    border-radius: 18px;
+    border: 3px dashed var(--primary-light);
+    padding: 15px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .balance-box:active { background: var(--bg); transform: scale(0.97); }
+  .balance-box .box-title { font-size: 13px; color: var(--text); margin-bottom: 8px; font-weight: bold; }
+  .balance-box .box-value { font-size: 19px; color: var(--primary); font-weight: bold; word-break: break-all; }
+
+  .goal-box, .note-box {
+    background: var(--white);
+    border-radius: 20px;
+    border: 3px dashed var(--primary-light);
+    padding: 18px;
+    margin-bottom: 20px;
+    cursor: pointer;
+  }
+  .goal-box:active { background: var(--bg); }
+  .goal-box .box-title, .note-box .box-title {
+    font-size: 16px; color: var(--primary); font-weight: bold; margin-bottom: 10px;
+  }
+  .goal-box .box-content {
+    font-size: 15px; color: var(--text-dark);
+    line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  }
+  .note-box textarea {
+    width: 100%; border: none;
+    background: transparent; resize: none;
+    font-size: 15px; color: var(--text-dark);
+    outline: none; font-family: inherit;
+    min-height: 70px; line-height: 1.6;
+  }
+
+  .empty-tip {
+    text-align: center; color: var(--primary-light);
+    font-size: 15px; margin-top: 40px;
+  }
+  .empty-tip .icon { font-size: 40px; margin-bottom: 10px; }
+
+  /* 明细列表 */
+  .detail-list { margin-top: 8px; }
+  .detail-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--primary-light);
+    font-size: 14px;
+    gap: 8px;
+  }
+  .detail-item:last-child { border-bottom: none; }
+  .detail-item .left { flex: 1; text-align: left; word-break: break-word; }
+  .detail-item .right { color: var(--primary); font-weight: bold; white-space: nowrap; }
+  .detail-item .right.income { color: var(--green); }
+  .detail-item .del-btn {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #FFE0E8; color: var(--red);
+    border: none; font-size: 12px; font-weight: bold;
+    cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .detail-item .del-btn:active { background: var(--red); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- ===== 快速记账 ===== -->
+<div class="page active" id="page-fast">
+  <div class="header">
+    <h1>记账本</h1>
+    <p>今天也要好好记账哦~</p>
+  </div>
+  <div class="month-badge">
+    <span class="bow">🎀</span>
+    <span class="txt" id="heartMonthText">本月</span>
+  </div>
+  <div class="tags-container" id="tagsContainer"></div>
+</div>
+
+<!-- ===== 账单 ===== -->
+<div class="page" id="page-bills">
+  <div class="header">
+    <h1>账单</h1>
+    <p>看看钱都花在哪里啦~</p>
+  </div>
+
+  <div class="bill-summary">
+    <div class="summary-box income">
+      <div class="s-label">本月收入</div>
+      <div class="s-value" id="billIncome">¥0.00</div>
+    </div>
+    <div class="summary-box expense">
+      <div class="s-label">本月支出</div>
+      <div class="s-value" id="billExpense">¥0.00</div>
+    </div>
+  </div>
+
+  <div class="prev-balance">
+    <div class="pb-box">
+      <div class="pb-label">上月微信余额</div>
+      <div class="pb-value" id="prevWechat">未设置</div>
+    </div>
+    <div class="pb-box">
+      <div class="pb-label">上月银行卡余额</div>
+      <div class="pb-value" id="prevBank">未设置</div>
+    </div>
+  </div>
+
+  <div class="bills-list" id="billsList"></div>
+</div>
+
+<!-- ===== 月份 ===== -->
+<div class="page" id="page-months">
+  <div class="header">
+    <h1>月份账单</h1>
+    <p>点击查看明细 · 长按修改</p>
+  </div>
+  <div class="months-grid" id="monthsGrid"></div>
+</div>
+
+<!-- ===== 余额 ===== -->
+<div class="page" id="page-balance">
+  <div class="header">
+    <h1>记账本</h1>
+  </div>
+  <div class="balance-header-decor"></div>
+  <div class="balance-row">
+    <div class="balance-box" onclick="editBalance('wechat')">
+      <div class="box-title">微信余额</div>
+      <div class="box-value" id="wechatBalanceDisplay">¥0.00</div>
+    </div>
+    <div class="balance-box" onclick="editBalance('bank')">
+      <div class="box-title">银行卡余额</div>
+      <div class="box-value" id="bankBalanceDisplay">¥0.00</div>
+    </div>
+  </div>
+  <div class="goal-box" onclick="editGoal()">
+    <div class="box-title">本月目标</div>
+    <div class="box-content" id="goalDisplay">点击设置本月目标</div>
+  </div>
+  <div class="note-box">
+    <div class="box-title">备注</div>
+    <textarea id="noteInput" placeholder="写点什么吧..." oninput="saveNote(this.value)"></textarea>
+  </div>
+</div>
+
+<!-- ===== 底部导航 ===== -->
+<div class="bottom-nav">
+  <div class="nav-item active" data-page="fast" onclick="switchTab('fast')">
+    <span class="nav-icon">☁️</span><span>快速记账</span>
+  </div>
+  <div class="nav-item" data-page="bills" onclick="switchTab('bills')">
+    <span class="nav-icon">📋</span><span>账单</span>
+  </div>
+  <div class="nav-item" data-page="months" onclick="switchTab('months')">
+    <span class="nav-icon">📅</span><span>月份</span>
+  </div>
+  <div class="nav-item" data-page="balance" onclick="switchTab('balance')">
+    <span class="nav-icon">👛</span><span>余额</span>
+  </div>
+</div>
+
+<!-- ===== 弹窗 ===== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ========== 数据 ========== */
+const STORAGE_KEY = 'cute_ledger_data_v4';
+
+let state = {
+  records: [],
+  categories: ['吃饭', '购物', '奶茶', '转账', '趣智校园'],
+  wechatBalance: 0,
+  bankBalance: 0,
+  goal: {},
+  note: '',
+  userDate: null,
+  manualMonths: {}  // { 'YYYY-MM': { wechatBalance, bankBalance, wechatIn, wechatOut, bankIn, bankOut } }
+};
+
+function loadData() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      state = { ...state, ...parsed };
+    } catch(e) { console.error(e); }
+  }
+  if (!state.manualMonths) state.manualMonths = {};
+  if (!state.goal) state.goal = {};
+}
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+/* ========== 工具 ========== */
+function getCurrentMonthStr() {
+  const d = state.userDate
+    ? new Date(state.userDate.year, state.userDate.month - 1, state.userDate.day)
+    : new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getPrevMonthStr() {
+  const [y, m] = getCurrentMonthStr().split('-').map(Number);
+  const py = m === 1 ? y - 1 : y;
+  const pm = m === 1 ? 12 : m - 1;
+  return `${py}-${String(pm).padStart(2, '0')}`;
+}
+
+function formatMoney(n) {
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  return sign + abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function getMonthName(monthStr) {
+  const [, m] = monthStr.split('-');
+  return `${parseInt(m)}月`;
+}
+
+/* 哈希 -> 稳定的随机数 */
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function prand(seed, i) {
+  const x = Math.sin(seed + i * 9973) * 10000;
+  return x - Math.floor(x);
+}
+
+/* ========== 初始化 ========== */
+function initApp() {
+  loadData();
+  if (!state.userDate) {
+    showModal(`
+      <h3>欢迎使用记账本</h3>
+      <p style="text-align:center;font-size:14px;color:#C85A82;margin-bottom:15px;">请确认当前日期哦~</p>
+      <div class="form-group">
+        <label>年</label>
+        <input type="number" id="initYear" value="${new Date().getFullYear()}">
+      </div>
+      <div class="form-group">
+        <label>月</label>
+        <input type="number" id="initMonth" value="${new Date().getMonth() + 1}" min="1" max="12">
+      </div>
+      <div class="form-group">
+        <label>日</label>
+        <input type="number" id="initDay" value="${new Date().getDate()}" min="1" max="31">
+      </div>
+      <button class="btn" onclick="saveInitDate()">确认进入</button>
+    `, false);
+  } else {
+    renderAll();
+  }
+}
+
+function saveInitDate() {
+  const y = parseInt(document.getElementById('initYear').value);
+  const m = parseInt(document.getElementById('initMonth').value);
+  const d = parseInt(document.getElementById('initDay').value);
+  if (!y || !m || !d) return alert('请填写完整日期哦~');
+  state.userDate = { year: y, month: m, day: d };
+  saveData();
+  closeModal();
+  renderAll();
+}
+
+/* ========== 渲染 ========== */
+function renderAll() {
+  renderTags();
+  renderHeartMonth();
+  renderBills();
+  renderMonths();
+  renderBalance();
+  renderNote();
+}
+
+function renderTags() {
+  const container = document.getElementById('tagsContainer');
+  container.innerHTML = '';
+
+  state.categories.forEach(cat => {
+    const div = document.createElement('div');
+    div.className = 'tag';
+    div.textContent = cat;
+
+    // 用名字哈希 -> 稳定的随机角度和偏移
+    const h = hashStr(cat);
+    const rot = (prand(h, 1) - 0.5) * 11;   // -5.5 ~ 5.5 度
+    const tx  = (prand(h, 2) - 0.5) * 18;   // -9 ~ 9 px
+    const ty  = (prand(h, 3) - 0.5) * 16;   // -8 ~ 8 px
+    div.style.transform = `rotate(${rot.toFixed(1)}deg) translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px)`;
+
+    div.onclick = () => openRecordModal(cat);
+    container.appendChild(div);
+  });
+
+  // 添加分类按钮
+  const addDiv = document.createElement('div');
+  addDiv.className = 'tag add-btn';
+  addDiv.textContent = '＋';
+  addDiv.onclick = addCategory;
+  container.appendChild(addDiv);
+}
+
+function renderHeartMonth() {
+  const [, m] = getCurrentMonthStr().split('-');
+  document.getElementById('heartMonthText').textContent = `${parseInt(m)}月`;
+}
+
+/* ========== 账单页 ========== */
+function renderBills() {
+  const currentMonth = getCurrentMonthStr();
+  const monthRecords = state.records.filter(r => r.date.startsWith(currentMonth));
+
+  // 本月总收入 / 总支出
+  const totalIncome = monthRecords.filter(r => r.isIncome).reduce((s, r) => s + r.amount, 0);
+  const totalExpense = monthRecords.filter(r => !r.isIncome).reduce((s, r) => s + r.amount, 0);
+  document.getElementById('billIncome').textContent = '¥' + formatMoney(totalIncome);
+  document.getElementById('billExpense').textContent = '¥' + formatMoney(totalExpense);
+
+  // 上月余额（从"月份页"手动补录里读）
+  const prevMonth = getPrevMonthStr();
+  const prev = state.manualMonths[prevMonth];
+  document.getElementById('prevWechat').textContent = prev
+    ? '¥' + formatMoney(prev.wechatBalance || 0)
+    : '未设置';
+  document.getElementById('prevBank').textContent = prev
+    ? '¥' + formatMoney(prev.bankBalance || 0)
+    : '未设置';
+
+  // 分类列表
+  const container = document.getElementById('billsList');
+
+  if (monthRecords.length === 0) {
+    container.innerHTML = '<div class="empty-tip"><div class="icon">🌸</div>本月还没有账单哦~</div>';
+    return;
+  }
+
+  const catMap = {};
+  monthRecords.forEach(r => {
+    if (!catMap[r.category]) catMap[r.category] = { expense: 0, income: 0 };
+    if (r.isIncome) catMap[r.category].income += r.amount;
+    else catMap[r.category].expense += r.amount;
+  });
+
+  container.innerHTML = '';
+  Object.keys(catMap).forEach(cat => {
+    const { expense, income } = catMap[cat];
+    const net = expense - income;
+    const displayAmt = Math.abs(net);
+    const isIncomeNet = net < 0;
+    const div = document.createElement('div');
+    div.className = 'bill-card';
+    div.innerHTML = `
+      <span class="cat-name">${cat}</span>
+      <span class="cat-amount ${isIncomeNet ? 'income' : ''}">¥${formatMoney(displayAmt)}</span>
+    `;
+    div.onclick = () => showCategoryDetail(cat, currentMonth);
+    container.appendChild(div);
+  });
+}
+
+function showCategoryDetail(cat, monthStr) {
+  const records = state.records.filter(r => r.category === cat && r.date.startsWith(monthStr));
+  let html = `<h3>${cat} · ${getMonthName(monthStr)}</h3><div class="detail-list">`;
+  records.slice().reverse().forEach(r => {
+    const time = r.date.split('T')[1]?.substring(0, 5) || '';
+    const sign = r.isIncome ? '+' : '-';
+    html += `
+      <div class="detail-item">
+        <span class="left">${time}${r.note ? ' · ' + r.note : ''}</span>
+        <span class="right ${r.isIncome ? 'income' : ''}">${sign}¥${formatMoney(r.amount)}</span>
+        <button class="del-btn" onclick="deleteRecord('${r.id}')">✕</button>
+      </div>
+    `;
+  });
+  html += '</div>';
+  showModal(html);
+}
+
+function deleteRecord(id) {
+  const r = state.records.find(x => x.id === id);
+  if (!r) return;
+  if (!confirm('确定删除这条记录吗？\n余额会相应调整回来。')) return;
+
+  // 反向操作余额
+  if (r.isIncome) {
+    if (r.account === 'wechat') state.wechatBalance -= r.amount;
+    else state.bankBalance -= r.amount;
+  } else {
+    if (r.account === 'wechat') state.wechatBalance += r.amount;
+    else state.bankBalance += r.amount;
+  }
+
+  state.records = state.records.filter(x => x.id !== id);
+  saveData();
+  renderAll();
+  closeModal();
+}
+
+/* ========== 月份页 ========== */
+function renderMonths() {
+  const container = document.getElementById('monthsGrid');
+
+  const monthsSet = new Set();
+  state.records.forEach(r => monthsSet.add(r.date.substring(0, 7)));
+  Object.keys(state.manualMonths).forEach(m => monthsSet.add(m));
+  const months = [...monthsSet].sort().reverse();
+
+  container.innerHTML = '';
+
+  months.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'month-card';
+
+    if (state.manualMonths[m]) {
+      // 手动补录月份
+      const d = state.manualMonths[m];
+      div.classList.add('manual');
+      const inSum = (d.wechatIn || 0) + (d.bankIn || 0);
+      const outSum = (d.wechatOut || 0) + (d.bankOut || 0);
+      div.innerHTML = `
+        <div class="m-title">${getMonthName(m)}</div>
+        <div class="m-total">收 ¥${formatMoney(inSum)} · 支 ¥${formatMoney(outSum)}</div>
+        <div class="m-accounts">
+          微信 ¥${formatMoney(d.wechatBalance || 0)}<br>
+          卡 ¥${formatMoney(d.bankBalance || 0)}
+        </div>
+      `;
+    } else {
+      // 自动计算的月份
+      const monthRecords = state.records.filter(r => r.date.startsWith(m));
+      const expenseRecords = monthRecords.filter(r => !r.isIncome);
+      const total = expenseRecords.reduce((s, r) => s + r.amount, 0);
+      const wechatTotal = expenseRecords.filter(r => r.account === 'wechat').reduce((s, r) => s + r.amount, 0);
+      const bankTotal = expenseRecords.filter(r => r.account === 'bank').reduce((s, r) => s + r.amount, 0);
+      div.innerHTML = `
+        <div class="m-title">${getMonthName(m)}</div>
+        <div class="m-total">支出 ¥${formatMoney(total)}</div>
+        <div class="m-accounts">
+          微信 ¥${formatMoney(wechatTotal)}<br>
+          卡 ¥${formatMoney(bankTotal)}
+        </div>
+      `;
+    }
+
+    // 点击查看明细
+    div.onclick = () => {
+      if (div._longPressed) { div._longPressed = false; return; }
+      showMonthDetail(m);
+    };
+
+    // 手动补录的月份支持长按
+    if (state.manualMonths[m]) {
+      attachLongPress(div, () => showMonthMenu(m));
+    }
+
+    container.appendChild(div);
+  });
+
+  // ➕ 添加月份卡片
+  const addCard = document.createElement('div');
+  addCard.className = 'month-card add-card';
+  addCard.innerHTML = '<div class="add-plus">＋</div><div class="add-text">补充月份</div>';
+  addCard.onclick = () => editManualMonth();
+  container.appendChild(addCard);
+}
+
+function showMonthDetail(monthStr) {
+  if (state.manualMonths[monthStr]) {
+    const d = state.manualMonths[monthStr];
+    showModal(`
+      <h3>${getMonthName(monthStr)} · 补录</h3>
+      <div class="detail-list">
+        <div class="detail-item"><span class="left">微信余额</span><span class="right">¥${formatMoney(d.wechatBalance || 0)}</span></div>
+        <div class="detail-item"><span class="left">银行卡余额</span><span class="right">¥${formatMoney(d.bankBalance || 0)}</span></div>
+        <div class="detail-item"><span class="left">微信入账</span><span class="right income">+¥${formatMoney(d.wechatIn || 0)}</span></div>
+        <div class="detail-item"><span class="left">微信支出</span><span class="right">-¥${formatMoney(d.wechatOut || 0)}</span></div>
+        <div class="detail-item"><span class="left">银行卡入账</span><span class="right income">+¥${formatMoney(d.bankIn || 0)}</span></div>
+        <div class="detail-item"><span class="left">银行卡支出</span><span class="right">-¥${formatMoney(d.bankOut || 0)}</span></div>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#C85A82;margin-top:14px;">长按卡片可修改或删除</p>
+    `);
+    return;
+  }
+
+  // 自动月份明细
+  const records = state.records.filter(r => r.date.startsWith(monthStr));
+  const catMap = {};
+  records.forEach(r => {
+    if (!catMap[r.category]) catMap[r.category] = { income: 0, expense: 0 };
+    if (r.isIncome) catMap[r.category].income += r.amount;
+    else catMap[r.category].expense += r.amount;
+  });
+
+  let html = `<h3>${getMonthName(monthStr)} 明细</h3><div class="detail-list">`;
+  Object.keys(catMap).forEach(cat => {
+    const { income, expense } = catMap[cat];
+    let line = '';
+    if (expense > 0) line += `支出 ¥${formatMoney(expense)}`;
+    if (income > 0) line += (line ? ' / ' : '') + `收入 ¥${formatMoney(income)}`;
+    html += `<div class="detail-item"><span class="left"><b>${cat}</b>：${line}</span></div>`;
+  });
+  html += '</div>';
+  showModal(html);
+}
+
+function showMonthMenu(monthStr) {
+  showModal(`
+    <h3>${getMonthName(monthStr)} · 操作</h3>
+    <p style="text-align:center;font-size:13px;color:#C85A82;margin-bottom:10px;">长按触发的操作</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1;" onclick="editManualMonth('${monthStr}')">修改</button>
+      <button class="btn danger" style="flex:1;" onclick="deleteManualMonth('${monthStr}')">删除</button>
+    </div>
+  `);
+}
+
+function editManualMonth(monthStr) {
+  const isEdit = !!monthStr;
+  const data = isEdit ? state.manualMonths[monthStr] : {};
+  const monthValue = isEdit ? monthStr : getPrevMonthStr();
+
+  showModal(`
+    <h3>${isEdit ? '修改' : '补充'}月份账单</h3>
+    <div class="form-group">
+      <label>月份</label>
+      <input type="month" id="mMonth" value="${monthValue}">
+    </div>
+    <div class="form-group">
+      <label>微信剩余余额</label>
+      <input type="number" id="mWechatBal" value="${data.wechatBalance || ''}" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label>银行卡剩余余额</label>
+      <input type="number" id="mBankBal" value="${data.bankBalance || ''}" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label>微信入账</label>
+      <input type="number" id="mWechatIn" value="${data.wechatIn || ''}" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label>微信支出</label>
+      <input type="number" id="mWechatOut" value="${data.wechatOut || ''}" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label>银行卡入账</label>
+      <input type="number" id="mBankIn" value="${data.bankIn || ''}" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label>银行卡支出</label>
+      <input type="number" id="mBankOut" value="${data.bankOut || ''}" step="0.01" placeholder="0.00">
+    </div>
+    <button class="btn" onclick="saveManualMonth(${isEdit ? `'${monthStr}'` : 'null'})">保存</button>
+  `);
+}
+
+function saveManualMonth(oldMonth) {
+  const month = document.getElementById('mMonth').value;
+  if (!month) return alert('请选择月份');
+
+  const data = {
+    wechatBalance: parseFloat(document.getElementById('mWechatBal').value) || 0,
+    bankBalance: parseFloat(document.getElementById('mBankBal').value) || 0,
+    wechatIn: parseFloat(document.getElementById('mWechatIn').value) || 0,
+    wechatOut: parseFloat(document.getElementById('mWechatOut').value) || 0,
+    bankIn: parseFloat(document.getElementById('mBankIn').value) || 0,
+    bankOut: parseFloat(document.getElementById('mBankOut').value) || 0,
+  };
+
+  if (oldMonth && oldMonth !== month) delete state.manualMonths[oldMonth];
+  state.manualMonths[month] = data;
+
+  saveData();
+  renderMonths();
+  renderBills();
+  closeModal();
+}
+
+function deleteManualMonth(monthStr) {
+  if (!confirm(`确定删除 ${getMonthName(monthStr)} 的补录数据吗？`)) return;
+  delete state.manualMonths[monthStr];
+  saveData();
+  renderMonths();
+  renderBills();
+  closeModal();
+}
+
+/* 长按识别 */
+function attachLongPress(el, callback) {
+  let timer = null;
+
+  const start = () => {
+    el._longPressed = false;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      el._longPressed = true;
+      if (navigator.vibrate) { try { navigator.vibrate(35); } catch(e){} }
+      callback();
+    }, 550);
+  };
+  const cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+  };
+
+  el.addEventListener('touchstart', start, { passive: true });
+  el.addEventListener('touchend', cancel);
+  el.addEventListener('touchmove', cancel);
+  el.addEventListener('touchcancel', cancel);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', cancel);
+  el.addEventListener('mouseleave', cancel);
+}
+
+/* ========== 余额页 ========== */
+function renderBalance() {
+  document.getElementById('wechatBalanceDisplay').textContent = '¥' + formatMoney(state.wechatBalance);
+  document.getElementById('bankBalanceDisplay').textContent = '¥' + formatMoney(state.bankBalance);
+
+  const currentMonth = getCurrentMonthStr();
+  const goal = state.goal[currentMonth];
+  document.getElementById('goalDisplay').textContent = goal || '点击设置本月目标';
+}
+
+function renderNote() {
+  document.getElementById('noteInput').value = state.note || '';
+}
+
+function editBalance(type) {
+  const current = type === 'wechat' ? state.wechatBalance : state.bankBalance;
+  const title = type === 'wechat' ? '修改微信余额' : '修改银行卡余额';
+  showModal(`
+    <h3>${title}</h3>
+    <div class="form-group">
+      <label>金额</label>
+      <input type="number" id="editBalanceInput" value="${current}" step="0.01">
+    </div>
+    <button class="btn" onclick="saveBalance('${type}')">保存</button>
+  `);
+}
+
+function saveBalance(type) {
+  const val = parseFloat(document.getElementById('editBalanceInput').value) || 0;
+  if (type === 'wechat') state.wechatBalance = val;
+  else state.bankBalance = val;
+  saveData();
+  renderBalance();
+  closeModal();
+}
+
+function editGoal() {
+  const currentMonth = getCurrentMonthStr();
+  const currentGoal = state.goal[currentMonth] || '';
+  showModal(`
+    <h3>设置本月目标</h3>
+    <div class="form-group">
+      <label>目标内容（文字）</label>
+      <textarea id="goalInput" placeholder="例如：少喝奶茶，多存钱~">${currentGoal}</textarea>
+    </div>
+    <button class="btn" onclick="saveGoal()">保存</button>
+  `);
+}
+
+function saveGoal() {
+  const val = document.getElementById('goalInput').value.trim();
+  const currentMonth = getCurrentMonthStr();
+  if (val) state.goal[currentMonth] = val;
+  else delete state.goal[currentMonth];
+  saveData();
+  renderBalance();
+  closeModal();
+}
+
+function saveNote(val) {
+  state.note = val;
+  saveData();
+}
+
+/* ========== 记账 ========== */
+function openRecordModal(category) {
+  window._currentIsIncome = false;
+  showModal(`
+    <h3>记一笔 · ${category}</h3>
+    <div class="type-switch">
+      <button class="type-btn active" id="typeExpense" onclick="selectType(false)">支出</button>
+      <button class="type-btn" id="typeIncome" onclick="selectType(true)">收入</button>
+    </div>
+    <div class="form-group">
+      <label>金额</label>
+      <input type="number" id="recordAmount" placeholder="0.00" step="0.01">
+    </div>
+    <div class="form-group">
+      <label id="accountLabel">支付方式</label>
+      <select id="recordAccount">
+        <option value="wechat">微信</option>
+        <option value="bank">银行卡</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>备注 (可选)</label>
+      <input type="text" id="recordNote" placeholder="买什么了？">
+    </div>
+    <button class="btn" onclick="saveRecord('${category}')">保存</button>
+  `);
+}
+
+function selectType(isIncome) {
+  window._currentIsIncome = isIncome;
+  document.getElementById('typeExpense').classList.toggle('active', !isIncome);
+  document.getElementById('typeIncome').classList.toggle('active', isIncome);
+  document.getElementById('accountLabel').textContent = isIncome ? '收款方式' : '支付方式';
+}
+
+function saveRecord(category) {
+  const amount = parseFloat(document.getElementById('recordAmount').value);
+  if (!amount || amount <= 0) return alert('请输入正确的金额哦~');
+
+  const isIncome = window._currentIsIncome || false;
+  const account = document.getElementById('recordAccount').value;
+  const note = document.getElementById('recordNote').value.trim();
+
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  state.records.push({
+    id: Date.now().toString(),
+    category, amount, note, date: dateStr, account, isIncome
+  });
+
+  // 余额自动加减
+  if (isIncome) {
+    if (account === 'wechat') state.wechatBalance += amount;
+    else state.bankBalance += amount;
+  } else {
+    if (account === 'wechat') state.wechatBalance -= amount;
+    else state.bankBalance -= amount;
+  }
+
+  saveData();
+  renderAll();
+  closeModal();
+}
+
+/* ========== 分类 ========== */
+function addCategory() {
+  showModal(`
+    <h3>添加新分类</h3>
+    <div class="form-group">
+      <label>分类名称</label>
+      <input type="text" id="newCatName" placeholder="例如：零食、交通">
+    </div>
+    <button class="btn" onclick="saveCategory()">添加</button>
+  `);
+}
+
+function saveCategory() {
+  const name = document.getElementById('newCatName').value.trim();
+  if (!name) return alert('名称不能为空哦~');
+  if (state.categories.includes(name)) return alert('这个分类已经存在啦~');
+  state.categories.push(name);
+  saveData();
+  renderTags();
+  closeModal();
+}
+
+/* ========== 页面切换 ========== */
+function switchTab(tabName) {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === tabName);
+  });
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + tabName).classList.add('active');
+
+  if (tabName === 'balance') {
+    const currentMonth = getCurrentMonthStr();
+    if (state.goal[currentMonth] === undefined) {
+      setTimeout(() => {
+        showModal(`
+          <h3>设置本月目标</h3>
+          <p style="text-align:center;font-size:14px;color:#C85A82;margin-bottom:15px;">第一次进入余额页，写下本月目标吧~</p>
+          <div class="form-group">
+            <label>目标内容（文字）</label>
+            <textarea id="goalInput" placeholder="例如：少喝奶茶，多存钱~"></textarea>
+          </div>
+          <button class="btn" onclick="saveGoal()">保存</button>
+        `);
+      }, 350);
+    }
+  }
+}
+
+function showModal(html, showClose = true) {
+  document.getElementById('modalBody').innerHTML = html;
+  document.querySelector('.modal-close').style.display = showClose ? 'block' : 'none';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  window._currentIsIncome = false;
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+window.onload = initApp;
+</script>
+</body>
+</html>
